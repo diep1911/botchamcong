@@ -10,7 +10,7 @@ import pytz
 import os
 
 # ====== Cấu hình cơ bản ======
-BOT_TOKEN = "8283660799:AAGlezM-cifmyKHkFdIwDZp4pSCRDzgmd-0"  # <== dán token bot của bạn vào đây
+BOT_TOKEN = os.getenv("BOT_TOKEN")  # <== dán token bot của bạn vào đây
 DB_PATH = "shifts.db"
 LOCAL_TZ = pytz.timezone("Asia/Ho_Chi_Minh")
 
@@ -229,3 +229,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
