@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #!/usr/bin/env python3
 from telegram import Update, InputFile, ReplyKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 from datetime import datetime, date, timedelta
 from io import BytesIO
 import pandas as pd
@@ -9,21 +9,11 @@ import sqlite3
 import pytz
 import os
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+# ====== Cấu hình cơ bản ======
+BOT_TOKEN = os.getenv("BOT_TOKEN")  # Lấy từ biến môi trường (Railway Variables) để an toàn
+DB_PATH = "shifts.db"
+LOCAL_TZ = pytz.timezone("Asia/Ho_Chi_Minh")
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Bot đang chạy 24/7!")
-
-def main():
-    print("Bot khởi động...")
-    app = Application.builder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    print("Bot chạy polling...")
-    app.run_polling()
-
-if __name__ == "__main__":
-    main()
-    
 # ====== Khởi tạo database ======
 def init_db():
     with sqlite3.connect(DB_PATH) as conn:
@@ -109,15 +99,17 @@ async def trangthai(update: Update, context: ContextTypes.DEFAULT_TYPE):
         rows = cur.fetchall()
 
     if not rows:
-        await update.message.reply_text("📅 Hôm nay bạn chưa có ca nào.", reply_markup=main_keyboard())
+        await update.message.reply_text("📭 Không có dữ liệu hôm nay.", reply_markup=main_keyboard())
         return
 
-    lines = [f"📋 Ca làm ngày {today}:"]
-    for i, (st, ed, du) in enumerate(rows, start=1):
-        st_str = datetime.fromisoformat(st).strftime("%H:%M") if st else "-"
-        ed_str = datetime.fromisoformat(ed).strftime("%H:%M") if ed else "-"
-        du_str = f"{du:.2f} giờ" if du else "-"
-        lines.append(f"{i}. {st_str} - {ed_str} ({du_str})")
+    lines = ["📅 Trạng thái hôm nay:"]
+    total = 0
+    for st, ed, du in rows:
+        into = datetime.fromisoformat(st).strftime("%H:%M:%S") if st else "Chưa"
+        out = datetime.fromisoformat(ed).strftime("%H:%M:%S") if ed else "Chưa kết thúc"
+        lines.append(f"  • Vào: {into} | Ra: {out} | Giờ: {du or 0:.2f}")
+        total += du or 0
+    lines.append(f"\n🕒 Tổng giờ hôm nay: {total:.2f}")
 
     await update.message.reply_text("\n".join(lines), reply_markup=main_keyboard())
 
@@ -126,13 +118,13 @@ async def xuatexcel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     args = context.args
     if not args:
-        await update.message.reply_text("⚠️ Dùng: /xuatexcel YYYY-MM (ví dụ: /xuatexcel 2025-11)", reply_markup=main_keyboard())
-        return
+        now = datetime.now()
+        args = [f"{now.year}-{now.month:02d}"]
 
     try:
-        year, month = map(int, args[0].split('-'))
-    except Exception:
-        await update.message.reply_text("⚠️ Sai định dạng, ví dụ: /xuatexcel 2025-11", reply_markup=main_keyboard())
+        year, month = map(int, args[0].split("-"))
+    except:
+        await update.message.reply_text("⚠️ Định dạng sai, ví dụ: /xuatexcel 2025-11", reply_markup=main_keyboard())
         return
 
     ym_prefix = f"{year:04d}-{month:02d}"
@@ -224,7 +216,7 @@ async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ====== Main ======
 def main():
     init_db()
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    app = Application.builder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("batdau", batdau))
     app.add_handler(CommandHandler("vao", vao))
@@ -239,4 +231,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
