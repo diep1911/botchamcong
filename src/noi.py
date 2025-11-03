@@ -9,11 +9,21 @@ import sqlite3
 import pytz
 import os
 
-# ====== Cấu hình cơ bản ======
-BOT_TOKEN = "8283660799:AAGlezM-cifmyKHkFdIwDZp4pSCRDzgmd-0"  # <== dán token bot của bạn vào đây
-DB_PATH = "shifts.db"
-LOCAL_TZ = pytz.timezone("Asia/Ho_Chi_Minh")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Bot đang chạy 24/7!")
+
+def main():
+    print("Bot khởi động...")
+    app = Application.builder().token(BOT_TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    print("Bot chạy polling...")
+    app.run_polling()
+
+if __name__ == "__main__":
+    main()
+    
 # ====== Khởi tạo database ======
 def init_db():
     with sqlite3.connect(DB_PATH) as conn:
@@ -229,3 +239,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
